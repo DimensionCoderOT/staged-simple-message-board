@@ -1,9 +1,19 @@
 // message board app
 // stage 8: Data belongs in a database
 import express from 'express';
+import multer from 'multer';
 import * as mb from './messageboard.js';
 
 const app = express();
+
+const uploader = multer({
+  dest: 'upload',
+  limits: { // for security
+    fields: 10,
+    fileSize: 1024 * 1024 * 20, // 20MB
+    files: 1,
+  },
+});
 
 app.use(express.static('client', { extensions: ['html'] }));
 
@@ -21,7 +31,7 @@ async function getMessage(req, res) {
 }
 
 async function postMessage(req, res) {
-  const messages = await mb.addMessage(req.body.msg);
+  const messages = await mb.addMessage(req.body.msg, req.file);
   res.json(messages);
 }
 
@@ -41,6 +51,6 @@ function asyncWrap(f) {
 app.get('/messages', asyncWrap(getMessages));
 app.get('/messages/:id', asyncWrap(getMessage));
 app.put('/messages/:id', express.json(), asyncWrap(putMessage));
-app.post('/messages', express.json(), asyncWrap(postMessage));
+app.post('/messages', uploader.single('avatar'), express.json(), asyncWrap(postMessage));
 
 app.listen(8080);
