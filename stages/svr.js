@@ -1,5 +1,5 @@
 // message board app
-// stage 9: PostgreSQL
+// stage 8: Data belongs in a database
 import express from 'express';
 import * as mb from './messageboard.js';
 

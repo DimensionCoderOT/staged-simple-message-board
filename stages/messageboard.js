@@ -1,34 +1,49 @@
-import config from './config.js';
-import Postgres from 'pg';
+import uuid from 'uuid-random';
+import sqlite from 'sqlite';
 
-const sql = new Postgres.Client(config);
-sql.connect();
+async function init() {
+  const db = await sqlite.open('./database.sqlite', { verbose: true });
+  await db.migrate({ migrationsPath: './migrations-sqlite' });
+  return db;
+}
 
-sql.on('error', (err) => {
-  console.error('SQL Fail', err);
-  sql.end();
-});
+const dbConn = init();
 
 export async function listMessages() {
-  const q = 'SELECT * FROM Messageboard ORDER BY time DESC LIMIT 10;';
-  const result = await sql.query(q);
-  return result.rows;
+  const db = await dbConn;
+  return db.all('SELECT * FROM Messages ORDER BY time DESC LIMIT 10');
 }
 
 export async function findMessage(id) {
-  const q = 'SELECT * FROM Messageboard WHERE id = $1;';
-  const result = await sql.query(q, [id]);
-  return result.rows[0];
+  const db = await dbConn;
+  return db.get('SELECT * FROM Messages WHERE id = ?', id);
+}
+
+function currentTime() {
+  return new Date().toISOString();
 }
 
 export async function addMessage(msg) {
-  const q = 'INSERT INTO Messageboard (msg) VALUES ($1);';
-  await sql.query(q, [msg]);
+  const db = await dbConn;
+
+  const id = uuid();
+  const time = currentTime();
+  await db.run('INSERT INTO Messages VALUES (?, ?, ?)', [id, msg, time]);
+
   return listMessages();
 }
 
 export async function editMessage(updatedMessage) {
-  const q = 'UPDATE Messageboard SET msg = $1 WHERE id = $2;';
-  await sql.query(q, [updatedMessage.msg, updatedMessage.id]);
-  return findMessage(updatedMessage.id);
+  const db = await dbConn;
+
+  const id = updatedMessage.id;
+  const time = currentTime();
+  const msg = updatedMessage.msg;
+
+  const statement = await db.run('UPDATE Messages SET msg = ? , time = ? WHERE id = ?', [msg, time, id]);
+
+  // if nothing was updated, the ID doesn't exist
+  if (statement.changes === 0) throw new Error('message not found');
+
+  return findMessage(id);
 }
