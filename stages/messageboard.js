@@ -28,3 +28,14 @@ export function addMessage(msg) {
   messages = [newMessage, ...messages.slice(0, 9)];
   return messages;
 }
+
+export function editMessage(updatedMessage) {
+  const storedMessage = findMessage(updatedMessage.id);
+  if (storedMessage == null) throw new Error('message not found');
+
+  // update old message in place
+  storedMessage.time = Date();
+  storedMessage.msg = updatedMessage.msg;
+
+  return storedMessage;
+}
